@@ -1,0 +1,48 @@
+---
+- name: "Checklist de Libreria TS4500 Biunker 5"
+  hosts: all
+  gather_facts: false
+  vars:
+    ansible_host: "172.18.121.191"
+    snmp_community: "public" 
+    snmp_version: "v2c"
+    
+    snmp_states:
+      "1": "Unknown"
+      "2": "Unused"
+      "3": "OK / Normal"
+      "4": "Warning / Degraded"
+      "5": "Critical / Failed"
+
+  tasks:
+    - name: Consultar estados de Salud y Fuentes de Poder
+      community.general.snmp_facts:
+        host: "{{ ansible_host }}"
+        community: "{{ snmp_community }}"
+        version: "{{ snmp_version }}"
+      register: raw_snmp
+
+    - name: Obtener Tabla de Drives (Walk)
+      community.general.snmp_info:
+        host: "{{ ansible_host }}"
+        community: "{{ snmp_community }}"
+        version: "{{ snmp_version }}"
+        walk:
+          - ".1.3.6.1.4.1.2.6.201.1.4.1.1.4"
+      register: drive_walk
+
+    - name: Reporte de Checklist Libreria
+      ansible.builtin.debug:
+        msg: 
+          - "------------------------------------------------"
+          - "REPORTE DE LIBRERÍA: {{ ansible_host }}"
+          - "Estado Global: {{ snmp_states[ansible_snmp_facts['.1.3.6.1.4.1.2.6.201.1.1.1.0'] | string] | default('Error Lectura') }}"
+          - "Drives detectados: {{ drive_walk.snmp_facts.values() | length }}"
+          - "------------------------------------------------"
+
+    - name: Validar Umbrales Alertas Críticos
+      ansible.builtin.assert:
+        that:
+          - "ansible_snmp_facts['.1.3.6.1.4.1.2.6.201.1.1.1.0'] | int == 3"
+        fail_msg: "¡ATENCIÓN! La Libreria IBM TS4500 en {{ ansible_host }} reporta un estado crítico o de advertencia."
+        success_msg: "Hardware en estado óptimo."
