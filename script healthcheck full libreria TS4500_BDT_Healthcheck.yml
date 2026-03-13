@@ -1,0 +1,12 @@
+- name: "Validar Semáforo Global (MIB BDT/OEM)"
+  community.general.snmp_device:
+    host: "{{ ansible_host }}"
+    community: "{{ snmp_community }}"
+    command: get
+    obj: ".1.3.6.1.4.1.14851.3.1.15.1.0"
+  register: bdt_health
+
+- name: "Check BDT Health"
+  ansible.builtin.assert:
+    that: "bdt_health.snmp_device['.1.3.6.1.4.1.14851.3.1.15.1.0'] == '1'"
+    fail_msg: "El estado global de BDT indica una anomalía (Status: {{ bdt_health.snmp_device['.1.3.6.1.4.1.14851.3.1.15.1.0'] }})"

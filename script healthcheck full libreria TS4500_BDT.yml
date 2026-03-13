@@ -1,0 +1,61 @@
+---
+- name: "TS4500 Healthcheck Completo - Rama BDT .14851"
+  hosts: all
+  gather_facts: false
+  vars:
+    # OIDs de Salud Global (Rama 14851)
+    oid_bdt_health: ".1.3.6.1.4.1.14851.3.1.15.1.0"
+    oid_bdt_robot:  ".1.3.6.1.4.1.2.1.14851.3.1.15.5.0"
+    
+    # OIDs de Inventario (Slots y Cartuchos)
+    # Estos suelen estar en la tabla de almacenamiento (storageElementTable)
+    oid_total_slots: ".1.3.6.1.4.1.14851.3.1.7.1.0"   # Total de slots en la librería
+    oid_used_slots:  ".1.3.6.1.4.1.14851.3.1.7.2.0"   # Slots ocupados con cartuchos
+    oid_cartridge_table: ".1.3.6.1.4.1.14851.3.1.12.1.1" # Tabla de etiquetas de cartuchos (Barcodes)
+
+  tasks:
+    - name: "[SNMP] Consultar Salud Global y Estadísticas de Slots"
+      community.general.snmp_facts:
+        host: "{{ ansible_host }}"
+        community: "{{ snmp_community | default('public') }}"
+        version: v2c
+      register: snmp_base
+
+    - name: "[SNMP] Consultar Inventario de Cartuchos (Walk)"
+      community.general.snmp_device:
+        host: "{{ ansible_host }}"
+        community: "{{ snmp_community }}"
+        command: walk
+        obj: "{{ oid_cartridge_table }}"
+      register: cartridge_walk
+
+    - name: "[LOG] Reporte de Capacidad y Estado"
+      vars:
+        salud: "{{ ansible_snmp_facts[oid_bdt_health] | default('N/A') }}"
+        total: "{{ ansible_snmp_facts[oid_total_slots] | default('0') }}"
+        usados: "{{ ansible_snmp_facts[oid_used_slots] | default('0') }}"
+      ansible.builtin.debug:
+        msg:
+          - "--------------------------------------------------------"
+          - "ESTADO GENERAL (BDT): {{ 'OK' if salud == '1' else 'FALLO/ADVERTENCIA (' + salud + ')' }}"
+          - "CAPACIDAD DE SLOTS:"
+          - "  - Total Slots: {{ total }}"
+          - "  - Slots Ocupados: {{ usados }}"
+          - "  - Slots Libres: {{ total | int - usados | int }}"
+          - "  - Ocupación: {{ (usados | int / total | int * 100) | round(2) }}%"
+          - "--------------------------------------------------------"
+
+    - name: "[INVENTARIO] Listar Cartuchos detectados"
+      ansible.builtin.debug:
+        msg: "Cartucho en Slot: {{ item.key.split('.')[-1] }} - Etiqueta (Barcode): {{ item.value }}"
+      loop: "{{ cartridge_walk.snmp_device | dict2items }}"
+      loop_control:
+        label: "Slot_{{ item.key.split('.')[-1] }}"
+
+    - name: "[VALIDAR] Umbrales Críticos"
+      ansible.builtin.assert:
+        that:
+          - "ansible_snmp_facts[oid_bdt_health] == '1'"
+          - "(ansible_snmp_facts[oid_used_slots] | int) < (ansible_snmp_facts[oid_total_slots] | int)"
+        fail_msg: "Salud comprometida o Librería llena (Sin slots libres)."
+        success_msg: "Salud OK y disponibilidad de slots confirmada."
