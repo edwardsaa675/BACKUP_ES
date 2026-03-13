@@ -1,9 +1,9 @@
 ---
 - hosts: all
-  gather_facts: false
+  gather_facts: no
   tasks:
   - name: "Validar Semáforo Global (MIB BDT/OEM)"
-    command: snmpwalk -v2c -c docrogestion "{{ libreria_TS4500BK5 }}" "{{ MIB-OIDs }}"
+    command: snmpwalk -v2c -c docrogestion "{{ LIB }}" "{{ MIB }}"
     register: snmpwalk
   - debug: var=snmpwalk.stdout_lines
   
