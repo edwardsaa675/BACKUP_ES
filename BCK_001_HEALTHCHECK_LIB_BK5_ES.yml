@@ -2,11 +2,6 @@
 - hosts: all
   gather_facts: no
   tasks:
-  - name: "subir privilegios)"
-    command: sudo su
-    register: snmpwalk
-  - debug: var=snmpwalk.stdout_lines
-
   - name: "Validar Semáforo Global (MIB BDT/OEM)"
     command: ./tmp/check_ts4500_snmp_ESO.sh 172.18.121.191 docrogestion
     register: snmpwalk
