@@ -3,8 +3,7 @@
   gather_facts: no
   tasks:
   - name: "Validar Semáforo Global (MIB BDT/OEM)"
-    command: cd /tmp
-    command: ./check_ts4500_snmp_ESO.sh 172.18.121.191 docrogestion
+    command: ./tmp/check_ts4500_snmp_ESO.sh 172.18.121.191 docrogestion
     register: snmpwalk
   - debug: var=snmpwalk.stdout_lines
   
