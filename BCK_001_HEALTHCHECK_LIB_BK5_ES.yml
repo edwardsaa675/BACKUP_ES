@@ -1,9 +1,30 @@
 ---
-- hosts: all
+- name: Healthcheck IBM TS4500 SNMP
+  hosts: all
   gather_facts: no
+
+  vars:
+    ts4500_ip: "172.18.121.191"
+    snmp_community: "docrogestion"
+    script_path: "/tmp/check_ts4500_snmp_ESO.sh"
+
   tasks:
 
-  - name: "Validar Semáforo Global (MIB BDT/OEM)"
-    command: /tmp/check_ts4500_snmp_ESO.sh 172.18.121.191 docrogestion
-    register: snmpwalk
-  - debug: var=snmpwalk.stdout_lines
+    - name: Ejecutar script de healthcheck TS4500
+      command: "{{ script_path }} {{ ts4500_ip }} {{ snmp_community }}"
+      register: snmpwalk
+      ignore_errors: yes
+
+    - name: Mostrar salida del script
+      debug:
+        var: snmpwalk.stdout_lines
+
+    - name: Fallar si estado es CRITICAL
+      fail:
+        msg: "CRITICAL detectado en la librería TS4500"
+      when: snmpwalk.rc == 2
+
+    - name: Mostrar warning si aplica
+      debug:
+        msg: "WARNING detectado en la librería TS4500"
+      when: snmpwalk.rc == 1
