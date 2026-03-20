@@ -17,9 +17,7 @@
 
     - name: Mostrar salida del script
       debug:
-      var: snmpwalk.stdout_lines
-      
-      
+        var: snmpwalk.stdout_lines
 
     - name: Fallar si estado es CRITICAL
       fail:
@@ -30,4 +28,3 @@
       debug:
         msg: "WARNING detectado en la librería TS4500"
       when: snmpwalk.rc == 1
-   
