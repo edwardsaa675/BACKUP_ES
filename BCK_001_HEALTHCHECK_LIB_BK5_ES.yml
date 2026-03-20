@@ -1,5 +1,5 @@
 ---
-- name: Healthcheck IBM TS4500 SNMP
+- name: Healthcheck IBM TS4500 SNMP (FINAL)
   hosts: all
   gather_facts: no
 
@@ -10,21 +10,60 @@
 
   tasks:
 
-    - name: Ejecutar script de healthcheck TS4500
-      command: "{{ script_path }} {{ ts4500_ip }} {{ snmp_community }}"
-      register: snmpwalk
-      ignore_errors: yes
+    - name: Validar existencia del script
+      stat:
+        path: "{{ script_path }}"
+      register: script_check
 
-    - name: Mostrar salida del script
-      debug:
-        var: snmpwalk.stdout_lines
-
-    - name: Fallar si estado es CRITICAL
+    - name: Falla si el script no existe
       fail:
-        msg: "CRITICAL detectado en la librería TS4500"
-      when: snmpwalk.rc == 2
+        msg: "El script {{ script_path }} no existe en el host remoto"
+      when: not script_check.stat.exists
 
-    - name: Mostrar warning si aplica
+    - name: Ejecutar healthcheck TS4500
+      command: "{{ script_path }} {{ ts4500_ip }} {{ snmp_community }}"
+      register: resultado
+      failed_when: false
+      changed_when: false
+
+    - name: Mostrar salida STDOUT
       debug:
-        msg: "WARNING detectado en la librería TS4500"
-      when: snmpwalk.rc == 1
+        msg: |
+          ===== RESULTADO HEALTHCHECK =====
+          {{ resultado.stdout }}
+
+    - name: Mostrar errores STDERR (si existen)
+      debug:
+        msg: |
+          ===== ERRORES =====
+          {{ resultado.stderr }}
+      when: resultado.stderr != ""
+
+    - name: Mostrar código de retorno
+      debug:
+        msg: "Código de retorno: {{ resultado.rc }}"
+
+    - name: Clasificar estado
+      set_fact:
+        estado: >-
+          {% if resultado.rc == 0 %}
+          OK
+          {% elif resultado.rc == 1 %}
+          WARNING
+          {% elif resultado.rc == 2 %}
+          CRITICAL
+          {% else %}
+          UNKNOWN
+          {% endif %}
+
+    - name: Mostrar estado final
+      debug:
+        msg: "Estado final TS4500: {{ estado }}"
+
+    - name: Falla controlada si es CRITICAL
+      fail:
+        msg: |
+          🚨 CRITICAL detectado en la librería TS4500
+          Detalle:
+          {{ resultado.stdout }}
+      when: estado == "CRITICAL"
