@@ -2,8 +2,8 @@
 - hosts: all
   gather_facts: no
   tasks:
-- name: "subir privilegios)"
-    command: sudo su -
+  - name: "subir privilegios)"
+    command: sudo su
     register: snmpwalk
   - debug: var=snmpwalk.stdout_lines
 
