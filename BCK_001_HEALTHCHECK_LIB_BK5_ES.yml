@@ -16,8 +16,9 @@
       ignore_errors: yes
 
     - name: Mostrar salida del script
+      debug:
       var: snmpwalk.stdout_lines
-      - debug: var=snmpwalk.stdout_lines
+      
       
 
     - name: Fallar si estado es CRITICAL
