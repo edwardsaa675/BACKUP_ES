@@ -13,12 +13,12 @@
     - name: Ejecutar script de healthcheck TS4500
       command: "{{ script_path }} {{ ts4500_ip }} {{ snmp_community }}"
       register: snmpwalk
-    - debug: var=snmpwalk.stdout_lines
       ignore_errors: yes
 
     - name: Mostrar salida del script
-      debug:
-        var: snmpwalk.stdout_lines
+      var: snmpwalk.stdout_lines
+      - debug: var=snmpwalk.stdout_lines
+      
 
     - name: Fallar si estado es CRITICAL
       fail:
